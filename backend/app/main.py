@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -6,13 +7,20 @@ from typing import List, Dict
 from app import models, schemas, crud
 from app.database import engine, get_db
 
-# Initialize database tables on startup (creates them if they do not exist)
-models.Base.metadata.create_all(bind=engine)
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Initialize database tables on startup (creates them if they do not exist)
+    try:
+        models.Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        print(f"Database connection skipped during startup: {e}")
+    yield
 
 app = FastAPI(
     title="Inventory & Order Management System API",
     description="Backend API for managing products, customers, and orders with automated inventory tracking.",
-    version="1.0.0"
+    version="1.0.0",
+    lifespan=lifespan
 )
 
 # CORS configuration - Allow all origins for flexibility, can be locked down in production
